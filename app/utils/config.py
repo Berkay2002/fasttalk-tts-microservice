@@ -81,12 +81,12 @@ class Config:
         try:
             Path(self.output_directory).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            logger.warning("Unable to ensure output directory %s: %s", self.output_directory, exc)
+            logger.warning(f"Unable to ensure output directory {self.output_directory}: {exc}")
 
         try:
             Path(self.log_directory).mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            logger.warning("Unable to ensure log directory %s: %s", self.log_directory, exc)
+            logger.warning(f"Unable to ensure log directory {self.log_directory}: {exc}")
 
     def _log_summary(self) -> None:
         """Emit a concise configuration summary for diagnostics."""

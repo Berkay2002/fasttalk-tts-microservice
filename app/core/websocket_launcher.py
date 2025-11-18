@@ -60,14 +60,14 @@ class WebSocketLauncher:
             self.logger.info("TTS WebSocket server interrupted by user")
 
     def _handle_signal(self, signum, _frame) -> None:
-        self.logger.info("Received signal %s, shutting down TTS WebSocket server", signum)
+        self.logger.info(f"Received signal {signum}, shutting down TTS WebSocket server")
         if self._loop and self._loop.is_running():
             self._loop.stop()
 
     async def _run(self) -> None:
         self._loop = asyncio.get_running_loop()
         async with websockets.serve(self._handle_connection, self.config.host, self.config.port):
-            self.logger.info("TTS WebSocket server ready on ws://%s:%s", self.config.host, self.config.port)
+            self.logger.info(f"TTS WebSocket server ready on ws://{self.config.host}:{self.config.port}")
             await asyncio.Future()  # Run forever
 
     # ----------------------------------------------------------------- handlers

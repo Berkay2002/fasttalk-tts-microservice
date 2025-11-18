@@ -182,7 +182,7 @@ class MonitoringServer:
             return
 
         def _run() -> None:
-            logger.info("Starting TTS monitoring server on %s:%s", self.host, self.port)
+            logger.info(f"Starting TTS monitoring server on {self.host}:{self.port}")
             self.app.run(host=self.host, port=self.port, debug=False, use_reloader=False)
 
         self._thread = Thread(target=_run, daemon=True)
@@ -190,5 +190,5 @@ class MonitoringServer:
 
     def run(self, debug: bool = False) -> None:
         """Run the monitoring server in the current thread."""
-        logger.info("Running TTS monitoring server on %s:%s", self.host, self.port)
+        logger.info(f"Running TTS monitoring server on {self.host}:{self.port}")
         self.app.run(host=self.host, port=self.port, debug=debug, use_reloader=False)

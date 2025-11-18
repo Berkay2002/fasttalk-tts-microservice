@@ -135,7 +135,7 @@ class CircuitBreaker:
     def _on_success(self) -> None:
         with self._lock:
             if self._state in {CircuitBreakerState.OPEN, CircuitBreakerState.HALF_OPEN}:
-                logger.info("Circuit breaker '%s' closing after successful call", self.name)
+                logger.info(f"Circuit breaker '{self.name}' closing after successful call")
             self._state = CircuitBreakerState.CLOSED
             self._failure_count = 0
             self._last_failure = None
@@ -147,7 +147,7 @@ class CircuitBreaker:
 
             if self._failure_count >= self.failure_threshold:
                 if self._state != CircuitBreakerState.OPEN:
-                    logger.warning("Circuit breaker '%s' opening (failures=%s)", self.name, self._failure_count)
+                    logger.warning(f"Circuit breaker '{self.name}' opening (failures={self._failure_count})")
                 self._state = CircuitBreakerState.OPEN
             else:
                 self._state = CircuitBreakerState.HALF_OPEN
@@ -155,7 +155,7 @@ class CircuitBreaker:
     def _maybe_reset(self) -> None:
         if self._state == CircuitBreakerState.OPEN and self._last_failure is not None:
             if (time.time() - self._last_failure) >= self.reset_timeout:
-                logger.info("Circuit breaker '%s' transitioning to HALF_OPEN", self.name)
+                logger.info(f"Circuit breaker '{self.name}' transitioning to HALF_OPEN")
                 self._state = CircuitBreakerState.HALF_OPEN
 
 
