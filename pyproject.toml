@@ -1,0 +1,53 @@
+# ============================================================================
+# FastTalk TTS Microservice
+# ============================================================================
+# Text-to-Speech service using Kokoro TTS.
+#
+# Development:
+#   uv venv && source .venv/bin/activate
+#   uv pip install -e ".[dev]"
+#
+# Docker builds use requirements.txt for simplicity and caching.
+
+[project]
+name = "fasttalk-tts"
+version = "1.0.0"
+description = "FastTalk TTS microservice"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+dependencies = [
+    # Core TTS
+    "kokoro-onnx>=0.3.9",
+    
+    # Web Framework
+    "flask>=3.0.0",
+    "websockets>=13.0",
+    
+    # Audio
+    "sounddevice>=0.4.0",
+    "soundfile>=0.12.0",
+    
+    # Document parsing (for input processing)
+    "beautifulsoup4>=4.12.0",
+    "ebooklib>=0.18",
+    "PyMuPDF>=1.24.0",
+    "pymupdf4llm>=0.0.10",
+    
+    # Monitoring
+    "psutil>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
