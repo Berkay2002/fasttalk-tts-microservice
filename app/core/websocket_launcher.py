@@ -20,7 +20,7 @@ import websockets
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from websockets.server import WebSocketServerProtocol
 
-from app.legacy import tts_service as legacy_tts
+from app.core.backends import build_backend
 from app.monitoring.service_monitor import ServiceMonitor
 from app.utils.config import Config
 from app.utils.connection_manager import ConnectionManager
@@ -35,6 +35,7 @@ class WebSocketLauncher:
         self.monitor = monitor or ServiceMonitor()
         self.connection_manager = ConnectionManager(self.config.max_connections)
         self.logger = get_logger("tts.websocket")
+        self.backend = build_backend(self.config)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -52,6 +53,7 @@ class WebSocketLauncher:
             host=self.config.host,
             port=self.config.port,
             max_connections=self.config.max_connections,
+            backend=self.backend.name,
         )
 
         try:
@@ -144,6 +146,13 @@ class WebSocketLauncher:
                 self.logger.warning("Unsupported audio format", session_id=session_id, format=fmt)
                 return
 
+            if self.config.backend == "chatterbox" and fmt != "wav":
+                self.monitor.record_error()
+                await self._send_json(websocket, {"status": "error", "message": "Chatterbox only supports WAV"})
+                self.connection_manager.record_message_sent(session_id)
+                self.logger.warning("Unsupported audio format", session_id=session_id, format=fmt)
+                return
+
             output_dir = Path(self.config.output_directory)
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = output_dir / f"{uuid4()}.{fmt}"
@@ -154,16 +163,13 @@ class WebSocketLauncher:
             start_time = time.time()
 
             try:
-                for update in legacy_tts.convert_text_to_audio_text(
+                for update in self.backend.synthesize(
                     text=text,
-                    output_file=str(output_file),
+                    output_file=output_file,
                     voice=voice,
                     speed=speed,
                     lang=lang,
-                    format=fmt,
-                    debug=False,
-                    model_path=self.config.model_path,
-                    voices_path=self.config.voices_path,
+                    fmt=fmt,
                 ):
                     if "progress" in update:
                         await self._send_json(websocket, {"status": "progress", "progress": update["progress"]})
@@ -173,7 +179,7 @@ class WebSocketLauncher:
                             websocket,
                             {
                                 "status": "ok",
-                                "file": update["file"],
+                                "file": str(update["file"]),
                                 "format": update["format"],
                             },
                         )

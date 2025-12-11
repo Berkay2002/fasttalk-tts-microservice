@@ -48,6 +48,10 @@ class Config:
     default_format: str = field(default_factory=lambda: os.getenv("TTS_DEFAULT_FORMAT", "wav"))
     allow_streaming: bool = field(default_factory=lambda: _bool_env("TTS_ALLOW_STREAMING", True))
 
+    # Backend selection ----------------------------------------------------
+    backend: str = field(default_factory=lambda: os.getenv("TTS_BACKEND", "kokoro"))
+    chatterbox_device: str = field(default_factory=lambda: os.getenv("TTS_CHATTERBOX_DEVICE", "cuda"))
+
     # Model asset configuration -------------------------------------------
     model_path: str = field(default_factory=lambda: os.getenv("TTS_MODEL_PATH", "kokoro-v1.0.onnx"))
     voices_path: str = field(default_factory=lambda: os.getenv("TTS_VOICES_PATH", "voices-v1.0.bin"))
@@ -75,6 +79,8 @@ class Config:
             raise ValueError("TTS_MAX_CONNECTIONS must be at least 1.")
         if self.default_format not in {"wav", "mp3"}:
             raise ValueError("TTS_DEFAULT_FORMAT must be either 'wav' or 'mp3'.")
+        if self.backend not in {"kokoro", "chatterbox"}:
+            raise ValueError("TTS_BACKEND must be either 'kokoro' or 'chatterbox'.")
 
     def _ensure_directories(self) -> None:
         """Create directories required at runtime if they are missing."""
@@ -110,6 +116,7 @@ class Config:
             self.voices_path,
             self.output_directory,
         )
+        logger.info("TTS backend: %s (device=%s)", self.backend, self.chatterbox_device)
 
     # ----------------------------------------------------------------- helpers
     def to_dict(self) -> Dict[str, Any]:
@@ -125,6 +132,8 @@ class Config:
             "default_language": self.default_language,
             "default_speed": self.default_speed,
             "default_format": self.default_format,
+            "backend": self.backend,
+            "chatterbox_device": self.chatterbox_device,
             "model_path": self.model_path,
             "voices_path": self.voices_path,
             "output_directory": self.output_directory,

@@ -51,6 +51,8 @@ def main() -> None:
     parser.add_argument("--language", type=str, help="Default language override")
     parser.add_argument("--speed", type=float, help="Default speed override")
     parser.add_argument("--log-level", type=str, help="Logging level override")
+    parser.add_argument("--backend", type=str, choices=["kokoro", "chatterbox"], help="Backend engine")
+    parser.add_argument("--chatterbox-device", type=str, help="Device for Chatterbox (cuda/cpu)")
     parser.add_argument("--show", action="store_true", help="Display configuration (config mode)")
 
     args = parser.parse_args()
@@ -73,6 +75,10 @@ def main() -> None:
         config.default_speed = args.speed
     if args.log_level:
         config.log_level = args.log_level
+    if args.backend:
+        config.backend = args.backend
+    if args.chatterbox_device:
+        config.chatterbox_device = args.chatterbox_device
 
     logging.getLogger().setLevel(getattr(logging, config.log_level.upper(), logging.INFO))
 
