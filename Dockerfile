@@ -1,27 +1,17 @@
 # CUDA-enabled base image for GPU-capable chatterbox backend
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM fasttalk/base:cuda12.1-py310-torch260
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip \
-    build-essential \
-    libsndfile1 \
-    libportaudio2 \
-    ffmpeg \
-    git \
-    wget \
- && rm -rf /var/lib/apt/lists/*
+# System dependencies are already provided by the shared base image
 
 # Copy dependency file first for better caching
 COPY requirements.txt /app/requirements.txt
 
-# Install Python dependencies (without torch to allow GPU wheels)
+# Install Python dependencies (torch/torchaudio already baked into base)
 RUN pip3 install --upgrade pip && \
-    pip3 install --no-cache-dir -r requirements.txt && \
-    pip3 install --no-cache-dir torch==2.6.0 torchaudio==2.6.0 --extra-index-url https://download.pytorch.org/whl/cu121
+    pip3 install --no-cache-dir -r requirements.txt
 
 # Copy the full project
 COPY . /app
