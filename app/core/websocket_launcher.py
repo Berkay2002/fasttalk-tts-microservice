@@ -21,6 +21,7 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from websockets.server import WebSocketServerProtocol
 
 from app.legacy import tts_service as legacy_tts
+from app.core.realtime_websocket_server import RealtimeWebSocketServer
 from app.monitoring.service_monitor import ServiceMonitor
 from app.utils.config import Config
 from app.utils.connection_manager import ConnectionManager
@@ -52,10 +53,18 @@ class WebSocketLauncher:
             host=self.config.host,
             port=self.config.port,
             max_connections=self.config.max_connections,
+            use_realtime_tts=self.config.use_realtime_tts,
+            tts_engine=self.config.tts_engine,
         )
 
         try:
-            asyncio.run(self._run())
+            if self.config.use_realtime_tts:
+                # Use RealtimeTTS server
+                realtime_server = RealtimeWebSocketServer(self.config, self.monitor)
+                realtime_server.start()
+            else:
+                # Use legacy server
+                asyncio.run(self._run())
         except KeyboardInterrupt:
             self.logger.info("TTS WebSocket server interrupted by user")
 

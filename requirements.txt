@@ -1,10 +1,32 @@
-beautifulsoup4
-ebooklib
-PyMuPDF
-kokoro-onnx==0.3.9
-pymupdf4llm
-sounddevice
+# Text-to-Speech (matching backend-orchestration)
+realtimetts[kokoro,coqui,orpheus]==0.5.5
+
+# GPU-accelerated PyTorch for Kokoro TTS (matching backend-orchestration)
+torch>=2.5.1
+torchaudio>=2.5.1
+kokoro>=0.9.2  # Official Kokoro package for GPU acceleration
 soundfile
-Flask
-psutil
+
+# Data processing (matching backend-orchestration)
+numpy  # For audio data handling
+
+# WebSocket server dependencies (matching backend-orchestration)
+fastapi
+uvicorn
 websockets
+
+# Configuration (matching backend-orchestration)
+python-dotenv
+
+# Additional TTS dependencies
+huggingface-hub  # For model downloads
+beautifulsoup4  # For text processing
+ebooklib  # For ebook processing
+PyMuPDF  # For PDF processing
+pymupdf4llm  # For PDF to text conversion
+sounddevice  # For audio playback
+kokoro-onnx==0.3.9  # ONNX version of Kokoro
+
+# Monitoring
+flask
+psutil
