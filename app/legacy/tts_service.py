@@ -11,22 +11,66 @@ import difflib
 import warnings
 from threading import Event
 import re
+from typing import TYPE_CHECKING
 
 import asyncio
 import websockets
 import json
 import os
 import uuid
-import soundfile as sf # type: ignore
+
+# Type checking imports
+if TYPE_CHECKING:
+    try:
+        from kokoro import Kokoro
+    except ImportError:
+        Kokoro = None  # type: ignore
 
 # Third-party imports
 import numpy as np
 from ebooklib import epub, ITEM_DOCUMENT # type: ignore
 from bs4 import BeautifulSoup
 from bs4.element import Tag
-import soundfile as sf # type: ignore 
-import sounddevice as sd # type: ignore
-from kokoro_onnx import Kokoro # type: ignore
+import soundfile as sf # type: ignore
+# import sounddevice as sd # type: ignore # Audio playback disabled in microservice mode
+
+# GPU/CUDA Configuration
+import torch
+def get_device():
+    """Get the best available device for TTS processing"""
+    if torch.cuda.is_available():
+        device = "cuda"
+        print(f"🚀 Using CUDA GPU: {torch.cuda.get_device_name(0)}")
+        print(f"   GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB")
+    else:
+        device = "cpu"
+        print("⚠️ CUDA not available, using CPU for TTS processing")
+    return device
+
+# Global device configuration
+TTS_DEVICE = get_device()
+
+# GPU Memory Management
+def manage_gpu_memory():
+    """Manage GPU memory for TTS processing"""
+    if TTS_DEVICE == "cuda" and torch.cuda.is_available():
+        try:
+            # Clear cache if memory usage is high
+            if torch.cuda.memory_allocated() / torch.cuda.get_device_properties(0).total_memory > 0.8:
+                print("🧹 Clearing GPU memory cache...")
+                torch.cuda.empty_cache()
+        except Exception as e:
+            print(f"Warning: GPU memory management failed: {e}")
+
+def cleanup_gpu_resources():
+    """Clean up GPU resources"""
+    if TTS_DEVICE == "cuda" and torch.cuda.is_available():
+        try:
+            torch.cuda.empty_cache()
+            print("🧹 GPU resources cleaned up")
+        except Exception as e:
+            print(f"Warning: GPU cleanup failed: {e}")
+
 import pymupdf4llm # type: ignore 
 import fitz # type: ignore
 from typing import Optional, cast
@@ -200,7 +244,7 @@ def print_supported_languages(model_path="kokoro-v1.0.onnx", voices_path="voices
     """Print all supported languages from Kokoro."""
     check_required_files(model_path, voices_path)
     try:
-        kokoro = Kokoro(model_path, voices_path)
+        kokoro = Kokoro(model_path, voices_path, device=TTS_DEVICE)
         languages = sorted(kokoro.get_languages())
         print("\nSupported languages:")
         for lang in languages:
@@ -214,7 +258,7 @@ def print_supported_voices(model_path="kokoro-v1.0.onnx", voices_path="voices-v1
     """Print all supported voices from Kokoro."""
     check_required_files(model_path, voices_path)
     try:
-        kokoro = Kokoro(model_path, voices_path)
+        kokoro = Kokoro(model_path, voices_path, device=TTS_DEVICE)
         voices = sorted(kokoro.get_voices())
         print("\nSupported voices:")
         for idx, voice in enumerate(voices):
@@ -729,7 +773,7 @@ class PdfParser:
                 
         return '\n'.join(chapter_text)
 
-def process_chunk_sequential(chunk: str, kokoro: Kokoro, voice: str, speed: float, lang: str, 
+def process_chunk_sequential(chunk: str, kokoro: 'Kokoro', voice: str, speed: float, lang: str,
                            retry_count=0, debug=False) -> tuple[list[float] | None, int | None]:
     """Process a single chunk of text sequentially with automatic chunk size adjustment."""
     try:
@@ -741,7 +785,7 @@ def process_chunk_sequential(chunk: str, kokoro: Kokoro, voice: str, speed: floa
             sys.stdout.write("\n")  # Move back to progress line
             sys.stdout.flush()
         
-        samples, sample_rate = kokoro.create(chunk, voice=voice, speed=speed, lang=lang)
+        samples, sample_rate = kokoro.create(chunk, voice=voice, speed=speed, lang=lang, device=TTS_DEVICE)
         return samples, sample_rate
     except Exception as e:
         error_msg = str(e)
@@ -848,7 +892,7 @@ def convert_text_to_audio(input_file, output_file=None, voice=None, speed=1.0, l
     
     # Load Kokoro model
     try:
-        kokoro = Kokoro(model_path, voices_path)
+        kokoro = Kokoro(model_path, voices_path, device=TTS_DEVICE)
 
         # Validate language after loading model
         lang = validate_language(lang, kokoro)
@@ -1095,35 +1139,39 @@ async def stream_audio(kokoro, text, voice, speed, lang, debug=False):
     global stop_spinner, stop_audio
     stop_spinner = False
     stop_audio = False
-    
+
     print("Starting audio stream...")
+    print("Note: Audio playback not available in microservice mode. Stream will generate audio data only.")
     chunks = chunk_text(text, initial_chunk_size=1000)
-    
+
     for i, chunk in enumerate(chunks, 1):
         if stop_audio:
             break
         # Update progress percentage
         progress = int((i / len(chunks)) * 100)
         spinner_thread = threading.Thread(
-            target=spinning_wheel, 
-            args=(f"Streaming chunk {i}/{len(chunks)}",)
+            target=spinning_wheel,
+            args=(f"Processing chunk {i}/{len(chunks)}",)
         )
         spinner_thread.start()
-        
+
         async for samples, sample_rate in kokoro.create_stream(
-            chunk, voice=voice, speed=speed, lang=lang
+            chunk, voice=voice, speed=speed, lang=lang, device=TTS_DEVICE
         ):
             if stop_audio:
                 break
             if debug:
-                print(f"\nDEBUG: Playing chunk of {len(samples)} samples")
-            sd.play(samples, sample_rate)
-            sd.wait()
-        
+                print(f"\nDEBUG: Generated chunk of {len(samples)} samples (audio playback disabled)")
+            # Audio playback disabled in microservice mode
+            # To enable audio playback, install sounddevice and uncomment the following lines:
+            # import sounddevice as sd
+            # sd.play(samples, sample_rate)
+            # sd.wait()
+
         stop_spinner = True
         spinner_thread.join()
         stop_spinner = False
-    
+
     print("\nStreaming completed.")
 
 def handle_ctrl_c(signum, frame):

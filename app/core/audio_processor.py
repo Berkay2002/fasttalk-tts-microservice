@@ -1,4 +1,3 @@
-<arg_value>
 """
 RealtimeTTS AudioProcessor integration for FastTalk TTS microservice.
 
